@@ -210,4 +210,120 @@ $(document).ready(function () {
       `<div class="carousel-item active"><div class="row">${itemsHtml}</div></div>`
     );
   };
+
+  loadCourses("", "All", "Most Popular");
+
+  $("#searchInput").on("input", function () {
+    loadCourses(
+      $(this).val(),
+      $("#topicDropdown").val(),
+      $("#sortByDropdown").val()
+    );
+  });
+
+  $("#topicDropdown").on("change", function () {
+    loadCourses(
+      $("#searchInput").val(),
+      $(this).val(),
+      $("#sortByDropdown").val()
+    );
+  });
+
+  $("#sortByDropdown").on("change", function () {
+    loadCourses(
+      $("#searchInput").val(),
+      $("#topicDropdown").val(),
+      $(this).val()
+    );
+  });
 });
+
+function loadCourses(q, topic, sort) {
+  $(".loader").show();
+  $.ajax({
+    url: "https://smileschool-api.hbtn.info/courses",
+    type: "GET",
+    data: {
+      q: q,
+      topic: topic,
+      sort: sort,
+    },
+    success: function (response) {
+      $("#searchInput").val(response.q);
+      populateDropdown("#topicDropdown", response.topics);
+      populateDropdown("#sortByDropdown", response.sorts);
+      $(".video-count").text(response.courses.length + " videos");
+      updateVideoCards(response.courses);
+    },
+    error: function (error) {
+      console.error("Error loading courses:", error);
+    },
+    complete: function () {
+      $(".loader").hide();
+    },
+  });
+}
+
+function toTitleCase(str) {
+  return str
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function populateDropdown(selector, items) {
+  const dropdown = $(selector);
+  dropdown.empty();
+  items.forEach((item) => {
+    dropdown.append(
+      $("<option>", {
+        value: item,
+        text: toTitleCase(item),
+      })
+    );
+  });
+}
+
+function updateVideoCards(courses) {
+  const container = $("#videoCardsContainer");
+  container.empty();
+  courses.forEach((course) => {
+    const cardHtml = `
+      <div class="col-12 col-sm-4 col-lg-3 d-flex justify-content-center">
+        <div class="card">
+          <img src="${course.thumb_url}" class="card-img-top" alt="${
+      course.title
+    }" />
+          <div class="card-img-overlay text-center">
+            <img src="images/play.png" alt="Play" width="64px" class="align-self-center play-overlay" />
+          </div>
+          <div class="card-body">
+            <h5 class="card-title font-weight-bold">${course.title}</h5>
+            <p class="card-text text-muted">${course["sub-title"]}</p>
+            <div class="creator d-flex align-items-center">
+              <img src="${
+                course.author_pic_url
+              }" alt="Creator of Video" width="30px" class="rounded-circle" />
+              <h6 class="pl-3 m-0 main-color">${course.author}</h6>
+            </div>
+            <div class="info pt-3 d-flex justify-content-between">
+              ${generateStars(course.star)}
+              <span class="main-color">${course.duration}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    container.append(cardHtml);
+  });
+}
+
+function generateStars(starCount) {
+  let starsHtml = "";
+  for (let i = 0; i < 5; i++) {
+    starsHtml += `<img src="images/star_${
+      i < starCount ? "on" : "off"
+    }.png" alt="star" width="15px" />`;
+  }
+  return `<div class="rating">${starsHtml}</div>`;
+}
