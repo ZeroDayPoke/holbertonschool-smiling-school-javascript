@@ -1,10 +1,102 @@
 $(document).ready(function () {
-  // Task 1
-  const quotesURL = "https://smileschool-api.hbtn.info/quotes";
-  loadQuotes(quotesURL);
+  function Carousel(url, selector) {
+    this.url = url;
+    this.selector = selector;
+    this.carouselData = [];
+    this.currentItem = 0;
+    this.itemsPerSlide = getItemsPerSlide();
+
+    this.loadItems = function () {
+      $.ajax({
+        url: this.url,
+        method: "GET",
+        success: (data) => {
+          this.carouselData = data;
+          this.addInitialItemsToEnd();
+          this.updateDisplay();
+          this.startAutoSlide();
+        },
+        error: (error) => console.error("Error loading carousel items:", error),
+      });
+    };
+
+    this.addInitialItemsToEnd = function () {
+      for (let i = 0; i < this.itemsPerSlide; i++) {
+        this.carouselData.push(this.carouselData[i]);
+      }
+    };
+
+    this.createCarouselItem = function (item) {
+      return `<div class="col-${12 / this.itemsPerSlide}">
+                ${this.createCarouselCard(item)}
+              </div>`;
+    };
+
+    this.createCarouselCard = function (item) {
+      return `
+        <div class="item">
+          <div class="card">
+            <img src="${item.thumb_url}" class="card-img-top" alt="${
+        item.title
+      }">
+            <div class="card-body">
+              <h5 class="card-title font-weight-bold">${item.title}</h5>
+              <p class="card-text text-muted">${item["sub-title"]}</p>
+              <div class="d-flex align-items-center mb-2">
+                <img src="${item.author_pic_url}" alt="${
+        item.author
+      }" class="rounded-circle mr-2" style="width: 30px; height: 30px;">
+                <small class="text-muted">${item.author}</small>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span class="text-muted">${this.generateStars(item.star)}</span>
+                <small class="text-muted">${item.duration}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    this.startAutoSlide = function () {
+      setInterval(() => this.shiftSlide("next"), 3000);
+    };
+
+    this.generateStars = function (starCount) {
+      return Array.from(
+        { length: 5 },
+        (_, i) =>
+          `<span class="fa fa-star ${i < starCount ? "checked" : ""}"></span>`
+      ).join("");
+    };
+  }
+
+  function getItemsPerSlide() {
+    if ($(window).width() < 576) {
+      return 1; // phone
+    } else if ($(window).width() < 768) {
+      return 2; // tablet
+    } else {
+      return 4; // desktop
+    }
+  }
+
+  loadQuotes("https://smileschool-api.hbtn.info/quotes");
+
+  const tutorialCarousel = new Carousel(
+    "https://smileschool-api.hbtn.info/popular-tutorials",
+    "#tutorialCarousel"
+  );
+  const videoCarousel = new Carousel(
+    "https://smileschool-api.hbtn.info/latest-videos",
+    "#videoCarousel"
+  );
+
+  tutorialCarousel.loadItems();
+  videoCarousel.loadItems();
 
   function loadQuotes(url) {
-    const quotesSection = $(".carousel-inner");
+    const quotesSection = $("#carouselExampleControls .carousel-inner");
     const loader = $(".quotes-loader");
     loader.show();
 
@@ -41,136 +133,81 @@ $(document).ready(function () {
         loader.hide();
       },
       error: function (error) {
-        console.log(error);
+        console.error("Error loading quotes:", error);
+        loader.hide();
       },
     });
   }
 
-  // Task 2
-  let totalItems = 0;
-  let itemsPerSlide = getItemsPerSlide();
-  let currentItem = 0;
-  const carouselSelector = "#tutorialCarousel";
-  let carouselData = [];
-
-  function loadCarouselItems() {
-    toggleLoader(true);
-    $.ajax({
-      url: "https://smileschool-api.hbtn.info/popular-tutorials",
-      method: "GET",
-      success: handleDataLoad,
-      error: handleError,
-    });
-  }
-
-  function handleDataLoad(data) {
-    totalItems = data.length;
-    carouselData = data;
-    addInitialItemsToEnd();
-    updateCarouselDisplay();
-    startAutoSlide();
-    toggleLoader(false);
-  }
-
-  function handleError(error) {
-    console.error("Error loading carousel items:", error);
-    toggleLoader(false);
-  }
-
-  function createCarouselItem(tutorial) {
-    return `<div class="col-${
-      12 / itemsPerSlide
-    }">${createTutorialCard(tutorial)}</div>`;
-  }
-
-  function createTutorialCard(tutorial) {
-    return `
-      <div class="item">
-        <div class="card">
-          <img src="${
-            tutorial.thumb_url
-          }" class="card-img-top" alt="${tutorial.title}">
-          <div class="card-body">
-            <h5 class="card-title font-weight-bold">${tutorial.title}</h5>
-            <p class="card-text text-muted">${tutorial["sub-title"]}</p>
-            <div class="d-flex align-items-center mb-2">
-              <img src="${
-                tutorial.author_pic_url
-              }" alt="${tutorial.author}" class="rounded-circle mr-2" style="width: 30px; height: 30px;">
-              <small class="text-muted">${tutorial.author}</small>
-            </div>
-            <div class="d-flex justify-content-between">
-              <span class="text-muted">${generateStars(tutorial.star)}</span>
-              <small class="text-muted">${tutorial.duration}</small>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function generateStars(starCount) {
-    return Array.from(
-      { length: 5 },
-      (_, i) =>
-        `<span class="fa fa-star ${i < starCount ? "checked" : ""}"></span>`
-    ).join("");
-  }
-
-  function startAutoSlide() {
-    setInterval(() => shiftSlide("next"), 3000);
-  }
-
-  function shiftSlide(direction) {
-    if (direction === "next") {
-      currentItem = (currentItem + 1) % totalItems;
-    } else if (direction === "prev") {
-      currentItem = (currentItem - 1 + totalItems) % totalItems;
-    }
-    updateCarouselDisplay();
-  }
-
-  function addInitialItemsToEnd() {
-    for (let i = 0; i < itemsPerSlide; i++) {
-      carouselData.push(carouselData[i]);
-    }
-  }
-
-  function updateCarouselDisplay() {
-    const itemsHtml = carouselData
-      .slice(currentItem, currentItem + itemsPerSlide)
-      .map((tutorial) => createCarouselItem(tutorial))
-      .join("");
-    $("#carousel-items").html(
-      `<div class="carousel-item active"><div class="row">${itemsHtml}</div></div>`
-    );
-  }
-
-  function toggleLoader(show) {
-    $("#loader").toggle(show);
-  }
-
-  function getItemsPerSlide() {
-    if ($(window).width() < 576) {
-      return 1; // phones
-    } else if ($(window).width() < 768) {
-      return 2; // tablets
-    } else {
-      return 4; // desktops
-    }
-  }
-
   $(window).on("resize", function () {
-    itemsPerSlide = getItemsPerSlide();
-    updateCarouselDisplay();
+    const newItemsPerSlide = getItemsPerSlide();
+    if (tutorialCarousel.itemsPerSlide !== newItemsPerSlide) {
+      tutorialCarousel.itemsPerSlide = newItemsPerSlide;
+      tutorialCarousel.updateDisplay();
+    }
+    if (videoCarousel.itemsPerSlide !== newItemsPerSlide) {
+      videoCarousel.itemsPerSlide = newItemsPerSlide;
+      videoCarousel.updateDisplay();
+    }
   });
 
-  $(carouselSelector).on("click", ".carousel-control-prev", () =>
-    shiftSlide("prev")
-  );
-  $(carouselSelector).on("click", ".carousel-control-next", () =>
-    shiftSlide("next")
+  $(document).on(
+    "click",
+    "#tutorialCarousel .carousel-control-prev",
+    function () {
+      tutorialCarousel.shiftSlide("prev");
+    }
   );
 
-  loadCarouselItems();
+  $(document).on(
+    "click",
+    "#tutorialCarousel .carousel-control-next",
+    function () {
+      tutorialCarousel.shiftSlide("next");
+    }
+  );
+
+  $(document).on("click", "#videoCarousel .carousel-control-prev", function () {
+    videoCarousel.shiftSlide("prev");
+  });
+
+  $(document).on("click", "#videoCarousel .carousel-control-next", function () {
+    videoCarousel.shiftSlide("next");
+  });
+
+  Carousel.prototype.shiftSlide = function (direction) {
+    const length = this.carouselData.length;
+    if (direction === "next") {
+      this.currentItem = (this.currentItem + 1) % length;
+    } else if (direction === "prev") {
+      this.currentItem = (this.currentItem - 1 + length) % length;
+    }
+    this.updateDisplay();
+  };
+
+  Carousel.prototype.updateDisplay = function () {
+    let startIndex = this.currentItem;
+    let endIndex = startIndex + this.itemsPerSlide;
+    let itemsHtml = "";
+
+    if (endIndex > this.carouselData.length) {
+      let endItems = this.carouselData.slice(startIndex);
+      let startItems = this.carouselData.slice(
+        0,
+        endIndex % this.carouselData.length
+      );
+      itemsHtml = [...endItems, ...startItems]
+        .map((item) => this.createCarouselItem(item))
+        .join("");
+    } else {
+      itemsHtml = this.carouselData
+        .slice(startIndex, endIndex)
+        .map((item) => this.createCarouselItem(item))
+        .join("");
+    }
+
+    $(this.selector + " .carousel-inner").html(
+      `<div class="carousel-item active"><div class="row">${itemsHtml}</div></div>`
+    );
+  };
 });
